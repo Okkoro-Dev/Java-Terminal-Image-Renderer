@@ -30,7 +30,7 @@ A lightweight, systems-level terminal image renderer written in Java. Engineered
 
 1. **Clone the repository:**
     ```bash
-    git clone [https://github.com/Okkoro-Dev/Java-Terminal-Image-Renderer.git](https://github.com/Okkoro-Dev/Java-Terminal-Image-Renderer.git)
+    git clone https://github.com/Okkoro-Dev/Java-Terminal-Image-Renderer.git
     cd Java-Terminal-Image-Renderer
     ```
 2. **Compile the program:**
