@@ -82,7 +82,7 @@ public class Main {
         BufferedImage image = ImageIO.read(imageFile);
 
         int targetWidth = (args.length > 1) ? Integer.parseInt(args[1]) : 80;
-        int targetHeight = image.getHeight() / image.getWidth() * targetWidth;
+        int targetHeight = Math.round((float)image.getHeight()/image.getWidth() * targetWidth);
 
         image = scaleImage(image, targetWidth, targetHeight);
 
