@@ -12,7 +12,6 @@ A lightweight, systems-level terminal image renderer written in Java. Engineered
 - **Cache-Friendly Memory Layout:** Keeps pixel operations tightly packed in memory to maximize L1/L2 CPU hardware cache utilization.
 - **Bulk Output Redirection:** Leverages a 64 KB `BufferedWriter` to minimize costly system calls (`syscalls`), rendering full images in a single frame flip.
 - **Fast Header Inspection:** Validates image file headers and magic bytes via `ImageInputStream` in under 1 ms without decoding full pixel buffers into RAM.
-- **Clean ANSI Transparency:** Guards against background color smearing and trailing semicolon bugs with dedicated alpha-channel branching.
 
 ## Features
 
