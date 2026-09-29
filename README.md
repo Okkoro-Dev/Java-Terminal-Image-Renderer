@@ -2,7 +2,9 @@
 
 A lightweight, systems-level terminal image renderer written in Java. Engineered for high performance using zero-allocation byte buffers, cache-friendly planar memory access, and bulk ANSI stream I/O.
 
-![Demo](assets/demo.png)
+<p align="center">
+  <img src="assets/demo.png" alt="Demo Preview">
+</p>
 
 ## Highlights
 
@@ -35,14 +37,18 @@ A lightweight, systems-level terminal image renderer written in Java. Engineered
     ```
 2. **Compile the program:**
     ```bash
-    javac Main.java
+    mkdir -p bin
+    javac -d bin src/Main.java
     ```
 3. **Render the Image:**
     ```bash
-    java Main <path/to/image.png> [target-width]
+    java -cp bin Main <path/to/image.png> [target-width]
     ```
 4. **Save output as an ANSI file (Optional):**
     ```bash
-    java Main <path/to/image.png> [target-width] > output.ansi
+    java -cp bin Main <path/to/image.png> [target-width] > output.ansi
     cat output.ansi
     ```
+## License
+
+Distributed under the MIT License. See `LICENSE` for details.
