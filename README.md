@@ -3,7 +3,7 @@
 A lightweight, systems-level terminal image renderer written in Java. Engineered for high performance using zero-allocation byte buffers, cache-friendly planar memory access, and bulk ANSI stream I/O.
 
 <p align="center">
-  <img src="assets/demo.png" alt="Demo Preview">
+  <img width="1440" height="720" alt="Image" src="https://github.com/user-attachments/assets/d2eba0f6-3511-428a-82a3-7d5e8d0cc0f3" />
 </p>
 
 ## Highlights
@@ -18,7 +18,7 @@ A lightweight, systems-level terminal image renderer written in Java. Engineered
 - Half-block character (`▀`) dual-pixel stacking for true 1:1 cell aspect ratios.
 - Support for PNG, and JPEG file formats.
 - Full output pipeline compatible with standard terminal redirection (`> output.ansi`).
-- Custom width adjustment via `[target-width]` (default: 80 char wide)
+- Custom pixel dimensions adjustment via `[width] [height]` (default: 80 char wide)
 
 ## Quick Start
 
@@ -41,11 +41,11 @@ A lightweight, systems-level terminal image renderer written in Java. Engineered
     ```
 3. **Render the Image:**
     ```bash
-    java -cp bin Main <path/to/image.png> [target-width]
+    java -cp bin Main <path/to/image.png> [width] [height]
     ```
 4. **Save output as an ANSI file (Optional):**
     ```bash
-    java -cp bin Main <path/to/image.png> [target-width] > output.ansi
+    java -cp bin Main <path/to/image.png> [width] [height] > output.ansi
     cat output.ansi
     ```
 ## License

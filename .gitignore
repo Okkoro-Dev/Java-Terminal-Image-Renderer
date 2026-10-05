@@ -1,15 +1,33 @@
-# Compiled Java class files
+# ==========================================
+# 1. Java Compilation & Execution Outputs
+# ==========================================
 *.class
 
-# Package files
-*.jar
-*.war
+# Log files generated during execution
+*.log
 
-# IDE configuration folders
-.idea/
+# ==========================================
+# 2. Local Test Images & Assets
+# ==========================================
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.gif
+!assets/
+
+# ==========================================
+# 3. Code Editor & IDE Configurations
+# ==========================================
+# VS Code
 .vscode/
-*.iml
 
-# OS generated files
-.DS_Store
-Thumbs.db
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+
+# NetBeans
+nbproject/
+build/
+nbdist/
