@@ -1,19 +1,20 @@
-import java.io.File;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import javax.imageio.ImageIO;
-import javax.imageio.stream.ImageInputStream;
-import java.awt.image.BufferedImage;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.Iterator;
+import javax.imageio.ImageIO;
+import javax.imageio.stream.ImageInputStream;
 
 public class Main {
 
     private static final BufferedWriter writer = new BufferedWriter(
         new OutputStreamWriter(System.out), 64 * 1024
     );
+    // NOTE: Buffered writer is a hell lot faster because it minimize syscall to only every 64KB
 
     private  static boolean validateImageFile(File file) {
 
@@ -49,11 +50,18 @@ public class Main {
         BufferedImage resized = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g2d = resized.createGraphics();
     
-        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
         g2d.drawImage(original, 0, 0, targetWidth, targetHeight, null);
         g2d.dispose();
     
         return resized;
+    }
+
+    // pre-load char "0"-"255" so we don't need to call Integer.toString() at all 
+    private static final String[] ColourLookUp = new String[256]; static {
+        for (int i = 0; i < 256; i++) {
+            ColourLookUp[i] = Integer.toString(i);
+        }
     }
 
     public static void main(String[] args) throws IOException {
@@ -72,8 +80,13 @@ public class Main {
 
         BufferedImage image = ImageIO.read(imageFile);
 
+        // customize image width, if argument left blank, default to 80 char wide
         int targetWidth  = (args.length > 1) ? Integer.parseInt(args[1]) : 80;
-        int targetHeight = (args.length > 2) ? Integer.parseInt(args[2]) : Math.round((float)image.getHeight()/image.getWidth() * targetWidth);
+        
+        // if the height argument is null, set it to a number that follow the image ratio
+        int targetHeight = (args.length > 2) ? Integer.parseInt(args[2]) : 
+            Math.round((float)image.getHeight()/image.getWidth() * targetWidth
+        );
 
         image = scaleImage(image, targetWidth, targetHeight);
 
@@ -81,95 +94,71 @@ public class Main {
         int height    = image.getHeight();
         int imageSize = width * height;
 
-        int alphaOffset = 0 * imageSize;
-        int redOffset   = 1 * imageSize;
-        int greenOffset = 2 * imageSize;
-        int blueOffset  = 3 * imageSize;
-
         int[] pixels = new int[imageSize];
         image.getRGB(0, 0, width, height, pixels, 0, width);
-        
-        byte[] pixelData = new byte[4 * imageSize];
 
-        for (int i = 0; i < imageSize; i++) {
-            int rgb = pixels[i];
-
-            pixelData[alphaOffset + i] = (byte) (rgb >> 24);
-            pixelData[redOffset   + i] = (byte) (rgb >> 16);
-            pixelData[greenOffset + i] = (byte) (rgb >> 8);
-            pixelData[blueOffset  + i] = (byte) rgb;
-        }
-
+        int lastFg;
+        int lastBg;
+        boolean isFirstPixel;
 
         for (int y = 0; y < height; y += 2) {
-            boolean hasBottomRow = (y + 1 < height);
-
+            boolean hasBottomRow = y + 1 < height;
+            
+            lastFg = 0;
+            lastBg = 0;
+            isFirstPixel = true;
+            
             for (int x = 0; x < width; x++) {
-                int index  = y * width + x;
-                int index2 = hasBottomRow ? (y + 1) * width + x : index;
+                int fgIndex  = y * width + x;
+                int bgIndex = hasBottomRow ? (y + 1) * width + x : fgIndex;
 
-                int prevIndex  = x != 0 ? y * width + x - 1 : 0;
-                int prevIndex2 = hasBottomRow ? (y + 1) * width + x - 1 : 0;
+                int argbTop    = pixels[fgIndex];
+                int argbBottom = pixels[bgIndex];
 
-                // Primary (Foreground) colour
-                int a      = pixelData[alphaOffset + index] & 0xFF;
-                int r      = pixelData[redOffset   + index] & 0xFF;
-                int g      = pixelData[greenOffset + index] & 0xFF;
-                int b      = pixelData[blueOffset  + index] & 0xFF;
+                int aTop    = (argbTop >>> 24);
+                int aBottom = (argbBottom >>> 24);
 
-                // Secondary (Background) colour
-                int a2     = pixelData[alphaOffset + index2] & 0xFF;
-                int r2     = pixelData[redOffset   + index2] & 0xFF;
-                int g2     = pixelData[greenOffset + index2] & 0xFF;
-                int b2     = pixelData[blueOffset  + index2] & 0xFF;
-
-                // Previous pixel data
-                int prevA  = pixelData[alphaOffset + prevIndex] & 0xFF;
-                int prevR  = pixelData[redOffset   + prevIndex] & 0xFF;
-                int prevG  = pixelData[greenOffset + prevIndex] & 0xFF;
-                int prevB  = pixelData[blueOffset  + prevIndex] & 0xFF;
-
-                int prevA2 = pixelData[alphaOffset + prevIndex2] & 0xFF;
-                int prevR2 = pixelData[redOffset   + prevIndex2] & 0xFF;
-                int prevG2 = pixelData[greenOffset + prevIndex2] & 0xFF;
-                int prevB2 = pixelData[blueOffset  + prevIndex2] & 0xFF;
-
-                // Use previous colour information
-                if (x > 0 
-                    && prevR == r && prevG == g && prevB == b && prevA == a 
-                    && prevR2 == r2 && prevG2 == g2 && prevB2 == b2 && prevA2 == a2)
-                {
-                    if (a == 0 && a2 == 0){
+                // end iteration early if the pixel (both top & bottom) is transparent
+                if (aTop == 0 && aBottom == 0) {
+                    if (lastFg != 0 || lastBg != 0) {
                         writer.write("\u001B[0m ");
-                        continue;
+                        lastFg = 0;
+                        lastBg = 0;
+                    } else {
+                        writer.write(' ');
                     }
-                    
-                    writer.write("\u2580");
-                    continue; 
+                    continue;
                 }
 
-                if (a == 0 && a2 == 0) {
-                    writer.write("\u001B[0m ");
+                // if the color of both pixel is the same as before, use previous color information
+                if (argbTop == lastFg && argbBottom == lastBg && !isFirstPixel) {
+                    writer.write(aTop > 0 ? '\u2580' : '\u2584');
                     continue;
                 }
 
                 writer.write("\u001B[38;2;");
-                writer.write(Integer.toString(r)); writer.write(';');
-                writer.write(Integer.toString(g)); writer.write(';');
-                writer.write(Integer.toString(b));
+                writer.write(aTop > 0 ? ColourLookUp[((argbTop >> 16) & 0xFF)] : ColourLookUp[((argbBottom >> 16) & 0xFF)]);
+                writer.write(';');
+                writer.write(aTop > 0 ? ColourLookUp[((argbTop >> 8) & 0xFF)] : ColourLookUp[((argbBottom >> 8) & 0xFF)]);
+                writer.write(';');
+                writer.write(aTop > 0 ? ColourLookUp[(argbTop & 0xFF)] : ColourLookUp[(argbBottom & 0xFF)]);
 
-                if (a2 == 0) {
-                    writer.write('m');
-                    writer.write('\u2580');
-                    continue;
+                if (aBottom > 0 && aTop > 0) {
+                    writer.write(";48;2;");
+                    writer.write(ColourLookUp[((argbBottom >> 16) & 0xFF)]); writer.write(';');
+                    writer.write(ColourLookUp[((argbBottom >> 8) & 0xFF)]);  writer.write(';');
+                    writer.write(ColourLookUp[(argbBottom & 0xFF)]);
+                } else {
+                    writer.write(";49"); 
                 }
 
-                writer.write(";48;2;");
-                writer.write(Integer.toString(r2)); writer.write(';');
-                writer.write(Integer.toString(g2)); writer.write(';');
-                writer.write(Integer.toString(b2)); writer.write('m');
-
-                writer.write('\u2580');
+                writer.write('m');
+                writer.write(aTop > 0 ? '\u2580' : '\u2584');
+                
+                // before next iteration, record current FG & BG ARGB value to be use in the next iteration
+                lastFg = aTop > 0 ? argbTop : argbBottom;
+                lastBg = aBottom > 0 && aTop > 0 ? argbBottom : 0;
+                isFirstPixel = false;
             }
             writer.write("\u001B[0m\n");
         }
